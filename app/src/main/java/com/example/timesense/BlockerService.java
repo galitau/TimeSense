@@ -21,13 +21,16 @@ public class BlockerService extends Service {
     private Handler handler = new Handler(); // Handler can schedule tasks to run later
     private Runnable checkerRunnable; // Runnable is task to run repeatedly
     private boolean isRunning = false;
+    private boolean onBreak = false;
+    private Runnable breakFinisher; // The task that ends the break
 
     private String targetActivity = "";
 
     // Banned Apps
     private final String[] BLOCKED_APPS = {
             "com.instagram.android",
-            "com.google.android.youtube"
+            "com.google.android.youtube",
+            "com.zhiliaoapp.musically"
     };
 
     @Override
@@ -35,26 +38,75 @@ public class BlockerService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Create the Notification Channel
         createNotificationChannel();
+        Notification initialNotification = getNotification("Focus Mode Active", "Starting service...");
+        startForeground(1, initialNotification);
 
-        // Build the notification to show that the app is running in the background per Android requirements
-        Notification notification = new NotificationCompat.Builder(this, "BlockerChannel")
-                .setContentTitle("Focus Mode Active")
-                .setContentText("Monitoring for distractions...")
-                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .build();
-
-        startForeground(1, notification);
+        // Check if we are starting a BREAK or normal FOCUS
+        if (intent != null && intent.getBooleanExtra("START_BREAK", false)) {
+            startBreakMode();
+        } else {
+            startFocusMode();
+        }
 
         // Reads address to return to
         if (intent != null && intent.hasExtra("RETURN_TARGET")) {
             targetActivity = intent.getStringExtra("RETURN_TARGET");
         }
 
-        // Start your logic
         isRunning = true;
         startBlocking();
 
         return START_STICKY; // Restart automatically ASAP if problem encountered
+    }
+
+    private void startBreakMode() {
+        onBreak = true;
+
+        // Update Notification to show "Break"
+        startForeground(1, getNotification("Break Time", "You have 5 minutes to scroll."));
+
+        // Schedule the end of the break (5 Minutes)
+        if (breakFinisher != null)
+            handler.removeCallbacks(breakFinisher);
+
+        breakFinisher = new Runnable() {
+            @Override
+            public void run() {
+                // Time is up! Back to work.
+                startFocusMode();
+            }
+        };
+        handler.postDelayed(breakFinisher, 5 * 60 * 1000); // 5 Minutes
+    }
+
+    private void startFocusMode() {
+        onBreak = false;
+        if (breakFinisher != null)
+            handler.removeCallbacks(breakFinisher); // Cancel any pending break
+
+        startForeground(1, getNotification("Focus Mode Active", "Monitoring for distractions..."));
+    }
+
+    private Notification getNotification(String title, String text) {
+        return new NotificationCompat.Builder(this, "BlockerChannel")
+                .setContentTitle(title)
+                .setContentText(text)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setOnlyAlertOnce(true) // Prevents sound/vibration every time it updates
+                .build();
+    }
+
+    // Update the notification text dynamically
+    private void updateNotification(String title, String text) {
+        Notification notification = new NotificationCompat.Builder(this, "BlockerChannel")
+                .setContentTitle(title)
+                .setContentText(text)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .build();
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null)
+            manager.notify(1, notification); // ID 1 updates the existing notification
     }
 
     // Helper method to create the channel
@@ -80,14 +132,15 @@ public class BlockerService extends Service {
 
                 checkCurrentApp();
 
-                // Check again in 5 second
-                handler.postDelayed(this, 5000);
+                // Check again in 1 second
+                handler.postDelayed(this, 1000);
             }
         };
         handler.post(checkerRunnable);
     }
 
     private void checkCurrentApp() {
+        if (onBreak) return; // no need to check if on 5 min break
         if (!PermissionUtils.hasUsageStatsPermission(this)) return; // Safety check for permission
 
         String topPackageName = "";

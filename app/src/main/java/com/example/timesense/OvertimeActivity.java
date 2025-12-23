@@ -203,8 +203,9 @@ public class OvertimeActivity extends AppCompatActivity {
                 String reasonText = b.getText().toString();
 
                 // If reason is to scroll, blocked apps are allowed
-                if (reasonText.equals("Scrolling / Phone")){
-                    stopBlocker();
+                if (reasonText.equals("Scrolling / Phone (5 min)")){
+                    // Start the service in break mode
+                    startBlockerWithBreak();
                 }
 
                 // Create the Log object
@@ -249,5 +250,22 @@ public class OvertimeActivity extends AppCompatActivity {
     private void stopBlocker() {
         Intent intent = new Intent(this, BlockerService.class);
         stopService(intent);
+    }
+
+    private void startBlockerWithBreak() {
+        // Permissions check
+        if (!PermissionUtils.hasUsageStatsPermission(this) || !PermissionUtils.hasOverlayPermission(this)) return;
+
+        Intent intent = new Intent(this, BlockerService.class);
+        intent.putExtra("RETURN_TARGET", OvertimeActivity.class.getName());
+
+        // TRIGGER THE BREAK
+        intent.putExtra("START_BREAK", true);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
     }
 }

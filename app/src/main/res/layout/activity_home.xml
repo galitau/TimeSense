@@ -95,7 +95,7 @@
                     android:id="@+id/statFocusTime"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0h 0m"
+                    android:text="1h 10m"
                     android:textColor="#2C3E50"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -127,7 +127,7 @@
                     android:id="@+id/statSessionCount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0"
+                    android:text="3"
                     android:textColor="#2C3E50"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -159,7 +159,7 @@
                     android:id="@+id/statDistraction"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="None"
+                    android:text="Scrolling / Phone"
                     android:textColor="#2C3E50"
                     android:textSize="20sp"
                     android:textStyle="bold" />
